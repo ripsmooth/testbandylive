@@ -46,3 +46,7 @@ Jos sivu ilmoittaa `Failed to fetch` tai selaimen konsolissa lukee `blocked by C
 - Tarkistetaan JS-syntaksi `github-only.js`-tiedostolle.
 - Tarkistetaan, ettei HTML-sivujen nykyisiä `/api/live`, `/api/match`, `/api/standings`, `/api/default-match` ja `/api/graphics-state` -kutsuja tarvitse poistaa.
 - TorneoPalin CORS-toimintaa ei voitu vahvistaa tässä työympäristössä verkkoyhteyden DNS-eston vuoksi; se on ratkaiseva julkaistavan version hyväksymistesti.
+
+
+## v3: suorat TorneoPal-haut
+Sarjataulukko (`sarjataulukko.html`) ja ottelun kokoonpanot (`kokoonpanot.html?ottelu=ID`) hakevat nyt suoraan osoitteista `https://finbandy.torneopal.fi/taso/sarja.php` ja `https://finbandy.torneopal.fi/taso/ottelu.php`. Tämä ohittaa GitHub Pagesin `/api/...` 404 -polut. Selain ei kuitenkaan voi ohittaa TorneoPalin CORS-rajoituksia; jos selain estää haun, tarvitaan CORS-sallittu lähde tai palvelinpuolen välityspalvelin.
