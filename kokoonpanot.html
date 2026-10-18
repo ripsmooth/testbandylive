@@ -24,50 +24,49 @@ const teams=[...m.getElementsByTagName('*')].filter(n=>/^(kotijoukkue|kotikokoon
 function draw(side,list){const target=$(side+'Players');target.innerHTML='';for(const p of list){const row=document.createElement('div');row.className='player';const num=document.createElement('div');num.className='number';num.textContent=p.number||'—';const name=document.createElement('div');name.className='pname';name.textContent=p.name;row.append(num,name);target.appendChild(row)}target.classList.toggle('hidden',!list.length);$(side+'Empty').classList.toggle('hidden',!!list.length)}draw('home',home);draw('away',away);$('updated').textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});$('err').classList.add('hidden')}
 function renderMatchPage(html){
 const doc=new DOMParser().parseFromString(html,'text/html');
-const classTables=[...doc.querySelectorAll('table')].filter(t=>t.classList.contains('pelaajalista')||/\bpelaajalista\b/i.test(t.getAttribute('class')||''));
-let lists=classTables;
-if(lists.length<2){
-  lists=[...doc.querySelectorAll('table.kokoonpanot table')].filter(t=>t.querySelector('tbody tr td'));
+const tables=[...doc.querySelectorAll('table')];
+const rosterTables=tables.map(table=>{
+ const rows=[...table.querySelectorAll('tr')];
+ const playerRows=rows.filter(tr=>tr.querySelector('a[href*="pelaaja.php?pelaaja="]'));
+ return {table,rows,playerRows};
+}).filter(x=>x.playerRows.length>0);
+if(rosterTables.length<2){
+ const title=clean(doc.querySelector('title')?.textContent);
+ throw Error('Ottelusivulta löytyi '+rosterTables.length+' pelaajalistaa (sivu: '+(title||'otsikko puuttuu')+'). HTML ladattiin, mutta pelaajarivejä ei tunnistettu.');
 }
-if(lists.length<2){
-  lists=[...doc.querySelectorAll('table')].filter(t=>{
-    const cap=clean(t.querySelector('caption')?.textContent);
-    const heads=[...t.querySelectorAll('th')].map(x=>clean(x.textContent).toLowerCase());
-    return !!cap && (heads.includes('nro')||heads.includes('numero')) && heads.some(h=>h==='pelaaja'||h==='pelaajat');
-  });
-}
-if(lists.length<2){
-  const title=clean(doc.querySelector('title')?.textContent);
-  const heading=clean(doc.querySelector('h1')?.textContent);
-  throw Error('Ottelusivulta ei löytynyt kahta pelaajalistaa'+(title?' (sivu: '+title+')':'')+(heading?' ('+heading+')':'')+'. Tarkista, palauttaako TorneoPal kokoonpanot palvelinhaulle.');
-}
-const getTeam=list=>{
-  const caption=clean(list.querySelector('caption')?.textContent);
-  const players=[...list.querySelectorAll('tr')].map(tr=>{
-    const cells=[...tr.querySelectorAll(':scope > td')];
-    return {number:clean(cells[0]?.textContent),name:clean(cells[1]?.textContent)};
-  }).filter(p=>p.name && !/^(pelaaja|pelaajat)$/i.test(p.name));
-  return {name:caption||'JOUKKUE',players};
+const getTeam=(entry)=>{
+ const {table,playerRows}=entry;
+ const players=playerRows.map(tr=>{
+   const cells=[...tr.querySelectorAll(':scope > td, :scope > th')];
+   const link=tr.querySelector('a[href*="pelaaja.php?pelaaja="]');
+   const name=clean(link?.textContent||cells[1]?.textContent||'');
+   const number=clean(cells[0]?.textContent||'');
+   return {number,name};
+ }).filter(p=>p.name);
+ let name=clean(table.querySelector('caption')?.textContent||'');
+ if(!name){
+   const previous=table.previousElementSibling;
+   if(previous && /^(H[1-2]|H[3-6]|DIV|P|STRONG)$/i.test(previous.tagName)) name=clean(previous.textContent);
+ }
+ if(!name){
+   const heading=table.parentElement?.querySelector('h2,h3,h4');
+   if(heading)name=clean(heading.textContent);
+ }
+ return {name,players};
 };
-const home=getTeam(lists[0]),away=getTeam(lists[1]);
-$('homeName').textContent=$('homeTitle').textContent=home.name;
-$('awayName').textContent=$('awayTitle').textContent=away.name;
-const logos=[...doc.querySelectorAll('table.ottelu .ottelujoukkue img.logo')];
+const home=getTeam(rosterTables[0]),away=getTeam(rosterTables[1]);
+if(!home.players.length||!away.players.length)throw Error('Kahden joukkueen pelaajarivejä ei saatu luettua.');
+$('homeName').textContent=$('homeTitle').textContent=home.name||'KOTIJOUKKUE';
+$('awayName').textContent=$('awayTitle').textContent=away.name||'VIERASJOUKKUE';
+const logos=[...doc.querySelectorAll('img')].filter(im=>/logo/i.test(im.className||''));
 logo('homeLogo',logos[0]?.src||'',home.name);
 logo('awayLogo',logos[1]?.src||'',away.name);
 function draw(side,list){
-  const target=$(side+'Players');target.innerHTML='';
-  for(const p of list){
-    const row=document.createElement('div');row.className='player';
-    const num=document.createElement('div');num.className='number';num.textContent=p.number||'—';
-    const name=document.createElement('div');name.className='pname';name.textContent=p.name;
-    row.append(num,name);target.appendChild(row);
-  }
-  target.classList.toggle('hidden',!list.length);
-  $(side+'Empty').classList.toggle('hidden',!!list.length);
+ const target=$(side+'Players');target.innerHTML='';
+ for(const p of list){const row=document.createElement('div');row.className='player';const num=document.createElement('div');num.className='number';num.textContent=p.number||'—';const name=document.createElement('div');name.className='pname';name.textContent=p.name;row.append(num,name);target.appendChild(row)}
+ target.classList.toggle('hidden',!list.length);$(side+'Empty').classList.toggle('hidden',!!list.length);
 }
-draw('home',home.players);draw('away',away.players);
-fitLayout();
+draw('home',home.players);draw('away',away.players);fitLayout();
 $('updated').textContent='PÄIVITETTY '+new Date().toLocaleTimeString('fi-FI',{hour:'2-digit',minute:'2-digit'});
 $('err').classList.add('hidden');
 }
