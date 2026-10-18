@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bandylive – TorneoPal-suoran haun testi</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#17232e;--yellow:#e8c547;--muted:#bdc7d0}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#fff;font:15px/1.5 Arial,sans-serif;padding:20px}.wrap{max-width:1000px;margin:auto}h1{font-size:24px;color:var(--yellow)}p{color:var(--muted)}button{background:var(--yellow);color:#101820;border:0;border-radius:5px;padding:11px 16px;font-weight:800;cursor:pointer}button:disabled{opacity:.5}section{background:var(--panel);border:1px solid #34434d;border-radius:8px;margin:16px 0;padding:14px}h2{font-size:18px;margin:0 0 8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1117;padding:12px;border-radius:5px;max-height:420px;overflow:auto;font-size:12px;color:#e8edf1}.status{color:var(--yellow);font-weight:bold}.small{font-size:13px}
+</style></head><body><div class="wrap">
+<h1>Bandylive · TorneoPal-suoran haun testi</h1>
+<p>Tämä testisivu toimii staattisena HTML-tiedostona GitHub Pagesissa. Se ei käytä Verceliä eikä API-avainta. Se testaa, palauttaako TorneoPal oikean HTML:n, jos selain lähettää evästeet ja toistaa haun uudelleenohjausvastauksen jälkeen.</p>
+<p><b>Testattavat lähteet:</b> sarjataulukko (sjpl_2627 / MBL) ja ottelu 23600. Testi näyttää vastauksen alun, otsikon, taulukoiden määrän ja mahdollisen JavaScript-uudelleenohjauksen.</p>
+<button id="run">Suorita testit</button> <span id="state" class="status">Valmis</span>
+<div id="results"></div>
+<script>
+const endpoints=[
+ {name:'Sarjataulukko',url:'https://finbandy.torneopal.fi/taso/sarja.php?turnaus=sjpl_2627&sarja=MBL'},
+ {name:'Ottelu 23600',url:'https://finbandy.torneopal.fi/taso/ottelu.php?ottelu=23600'}
+];
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function inspect(body){let title='(puuttuu)',tables=0,playerLinks=0,teamLinks=0;try{let d=new DOMParser().parseFromString(body,'text/html');title=(d.querySelector('title')?.textContent||'').trim()||'(puuttuu)';tables=d.querySelectorAll('table').length;playerLinks=d.querySelectorAll('a[href*="pelaaja.php?pelaaja="]').length;teamLinks=d.querySelectorAll('a[href*="joukkue.php?joukkue="]').length}catch(e){}let redirect='(ei tunnistettu)';let m=body.match(/a\s*=\s*['"]([A-Za-z0-9+/=]+)['"]/);if(m){try{redirect=atob(m[1])}catch(e){redirect='base64 löytyi, dekoodaus ei onnistunut'}}return {title,tables,playerLinks,teamLinks,redirect}}
+async function one(ep,credentials,round){const label=`${ep.name} · credentials=${credentials} · pyyntö ${round}`;const box=document.createElement('section');box.innerHTML=`<h2>${esc(label)}</h2><div class="status">Haetaan…</div><pre></pre>`;document.querySelector('#results').append(box);const status=box.querySelector('.status'),pre=box.querySelector('pre');try{const r=await fetch(ep.url,{method:'GET',mode:'cors',credentials,cache:'no-store',redirect:'follow'});const body=await r.text(),x=inspect(body);status.textContent=`HTTP ${r.status} · ${r.url} · ${r.headers.get('content-type')||'(content-type puuttuu)'}`;pre.textContent=`Otsikko: ${x.title}\nTaulukoita: ${x.tables}\nPelaaja-linkkejä: ${x.playerLinks}\nJoukkue-linkkejä: ${x.teamLinks}\nDekoodattu ohjauskohde: ${x.redirect}\nHTML-merkkejä: ${body.length}\n\nVastauksen alku (max 1200 merkkiä):\n${body.slice(0,1200)}`;return {ok:true,length:body.length,title:x.title,redirect:x.redirect,tables:x.tables,players:x.playerLinks}}catch(e){status.textContent='HAKU ESTYI';pre.textContent=`Virhe: ${e?.name||'Error'}: ${e?.message||e}\n\nJos virhe sanoo CORS tai Failed to fetch, selain ei anna GitHub Pagesin lukea tätä TorneoPal-vastausta kyseisillä asetuksilla.`;return {ok:false,error:String(e)}}}
+document.querySelector('#run').addEventListener('click',async()=>{const btn=document.querySelector('#run');btn.disabled=true;document.querySelector('#results').innerHTML='';document.querySelector('#state').textContent='Testataan…';try{for(const ep of endpoints){await one(ep,'omit',1);await wait(350);await one(ep,'include',1);await wait(450);await one(ep,'include',2);await wait(250)}}finally{btn.disabled=false;document.querySelector('#state').textContent='Testit valmiit';}});
+</script></div></body></html>
